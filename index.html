@@ -73,11 +73,12 @@
   *, *::before, *::after{ animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
 }
 
-html, body{ height: 100%; }
+html, body{ min-height: 100%; }
 body{
   font-family: var(--font-mono);
   color: var(--text);
   overflow: hidden;
+  background: #050506;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -142,10 +143,12 @@ body{
 }
 
 .terminal-window{
-  width: min(880px, 100%);
-  height: min(600px, 100%);
+  width: min(880px, calc(100vw - 32px));
+  max-width: 100%;
+  max-height: calc(100vh - 76px);
+  height: min(640px, calc(100vh - 76px));
   background: var(--win-bg);
-  backdrop-filter: blur(26px) saturate(180%);
+  backdrop-filter: blur(29px) saturate(180%);
   -webkit-backdrop-filter: blur(26px) saturate(180%);
   border: 1px solid var(--win-border);
   border-radius: 12px;
@@ -153,7 +156,7 @@ body{
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  transition: transform 0.35s cubic-bezier(.4,0,.2,1), opacity 0.35s ease, height 0.35s ease, width 0.35s ease;
+  transition: transform 0.25s ease, opacity 0.25s ease, height 0.25s ease, width 0.25s ease;
 }
 
 .terminal-window.shake{ animation: shake 0.4s ease; }
@@ -223,12 +226,15 @@ body{
   font-size: 13.5px;
   line-height: 1.65;
   cursor: text;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+  direction: ltr;
 }
 .term-body::-webkit-scrollbar{ width: 8px; }
 .term-body::-webkit-scrollbar-thumb{ background: rgba(255,255,255,0.12); border-radius: 4px; }
 .term-body::-webkit-scrollbar-track{ background: transparent; }
 
-.line{ white-space: pre-wrap; word-break: break-word; }
+.line{ white-space: pre-wrap; word-break: break-word; direction: ltr; unicode-bidi: isolate; }
 .line.dim{ color: var(--text-dim); }
 .line.faint{ color: var(--text-faint); }
 .line.success{ color: var(--prompt-green); }
@@ -244,7 +250,7 @@ body{
 .kv{ display: flex; gap: 10px; }
 .kv .k{ color: var(--text-dim); min-width: 90px; flex-shrink: 0; }
 
-.prompt-row{ display: flex; gap: 8px; flex-wrap: wrap; }
+.prompt-row{ display: flex; gap: 8px; flex-wrap: wrap; direction: ltr; unicode-bidi: isolate; }
 .prompt-tag{ color: var(--prompt-green); flex-shrink: 0; }
 .prompt-path{ color: var(--accent-blue); flex-shrink: 0; }
 .prompt-sep{ color: var(--text-dim); flex-shrink: 0; }
@@ -256,7 +262,7 @@ body{
   gap: 8px;
   flex-wrap: wrap;
 }
-.typed{ color: var(--text); white-space: pre-wrap; word-break: break-word; }
+.typed{ color: var(--text); white-space: pre-wrap; word-break: break-word; direction: ltr; unicode-bidi: isolate; }
 .cursor{
   display: inline-block;
   width: 8px; height: 16px;
@@ -266,10 +272,12 @@ body{
 }
 @keyframes blink{ 50%{ opacity: 0; } }
 #hidden-input{
-  position: absolute;
+  position: fixed;
+  left: 0; top: 0;
   opacity: 0;
   width: 1px; height: 1px;
   pointer-events: none;
+  direction: ltr;
 }
 
 .command-grid{
@@ -318,7 +326,7 @@ body{
   </div>
 </div>
 
-<input id="hidden-input" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+<input id="hidden-input" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="text" dir="ltr">
 
 <script>
 /* ============================================================================
@@ -335,7 +343,7 @@ const DATA = {
   phone: "+91 91506 94370",
   github: "https://github.com/Mano11x",
   linkedin: "", // EDIT ME: add your LinkedIn URL here
-  resume: "",   // EDIT ME: add a link to your resume PDF here
+  resume: "https://drive.google.com/file/d/1IR6IG6cqZ5TZ53NBn4pPxydz083D0ZUa/view?usp=sharing",   // EDIT ME: add a link to your resume PDF here
 
   about: [
     "I'm Manoj — a developer based in Chennai, building my way from a",
@@ -350,7 +358,7 @@ const DATA = {
 
   education: [
     { school: "University of Madras", detail: "B.Com", years: "2021 – 2024" },
-    { school: "UNIQ Technologies", detail: "Python Full-Stack Development", years: "2021 – 2024" }
+    { Course: "UNIQ Technologies", detail: "Python Full-Stack Development", years: "2024 – 2025" }
   ],
 
   skills: [
@@ -421,6 +429,19 @@ function esc(str){
   const d = document.createElement("div");
   d.textContent = str;
   return d.innerHTML;
+}
+
+function openUrl(url){
+  const popup = window.open(url, "_blank", "noopener");
+  if (!popup){
+    const a = document.createElement("a");
+    a.href = url;
+    a.target = "_blank";
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
 }
 
 const COMMANDS = {
@@ -505,13 +526,16 @@ const COMMANDS = {
   },
 
   github(){
-    window.open(DATA.github, "_blank", "noopener");
+    if (!DATA.github){
+      return [L("GitHub profile isn't linked yet.", "warn")];
+    }
+    openUrl(DATA.github);
     return [L(`Opening ${DATA.github} ...`, "dim")];
   },
 
   resume(){
     if (DATA.resume){
-      window.open(DATA.resume, "_blank", "noopener");
+      openUrl(DATA.resume);
       return [L("Opening resume ...", "dim")];
     }
     return [L("Resume isn't linked yet — email me and I'll send it straight over.", "warn"), L(`  → ${DATA.email}`, "accent")];
@@ -641,8 +665,12 @@ function updateLiveTyped(){
    keyboards work — clicking anywhere in the terminal refocuses it. */
 document.querySelector(".term-body").addEventListener("click", () => hiddenInput.focus());
 window.addEventListener("load", () => hiddenInput.focus());
+window.addEventListener("resize", () => scrollToBottom());
+window.addEventListener("orientationchange", () => setTimeout(scrollToBottom, 100));
 
 hiddenInput.addEventListener("input", updateLiveTyped);
+hiddenInput.addEventListener("keyup", updateLiveTyped);
+hiddenInput.addEventListener("keydown", updateLiveTyped);
 
 hiddenInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter"){
