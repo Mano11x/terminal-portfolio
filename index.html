@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>manoj@chennai ~ %</title>
+<meta name="description" content="Manoj S — interactive terminal portfolio.">
+
+<!--
+  ============================================================================
+  MANOJ // TERMINAL PORTFOLIO — SINGLE FILE BUILD
+  ============================================================================
+  A real, typed, interactive terminal — styled like macOS Terminal.app —
+  instead of a scrolling page. Visitors type commands (help, about, projects,
+  skills, contact...) and get real responses, exactly like a shell session.
+
+  WHY IT LOOKS LIKE macOS SPECIFICALLY:
+    - The font stack starts with `ui-monospace` / `-apple-system`, so on a
+      real Mac/iPhone/iPad this renders in actual San Francisco Mono — the
+      same font Terminal.app uses. Other devices fall back to JetBrains Mono.
+    - Traffic-light buttons (red/yellow/green) are wired to real behavior:
+      red = "can't actually close" wobble, yellow = minimize, green = toggle
+      fullscreen — same as real macOS window chrome.
+    - A translucent, blurred "desktop" sits behind the window (macOS
+      vibrancy), with a thin top menu bar for full-context authenticity.
+
+  HOW TO EDIT CONTENT:
+  All of Manoj's real info lives in one place — the `DATA` object inside
+  the <script> tag near the bottom, tagged "EDIT ME". Change it there and
+  every command that references it updates automatically. Search for
+  "EDIT ME" to find every spot that's still a placeholder (LinkedIn, resume
+  link, live project URLs) — none were guessed, they're left honest instead.
+  ============================================================================
+-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+/* ==========================================================================
+   1. TOKENS
+   Colors pulled straight from macOS Terminal's dark "Pro" profile + the
+   real traffic-light hex values Apple uses in its own window chrome.
+   ========================================================================== */
+:root{
+  --mac-red:    #FF5F56;
+  --mac-yellow: #FFBD2E;
+  --mac-green:  #27C93F;
+
+  --win-bg:      rgba(30, 30, 32, 0.78);
+  --win-border:  rgba(255,255,255,0.08);
+  --menubar-bg:  rgba(20, 20, 22, 0.55);
+
+  --text:        #F2F2F2;
+  --text-dim:    #8E8E93;
+  --text-faint:  #5A5A5E;
+
+  --prompt-green:#29C940;
+  --accent-blue: #4DA3FF;
+  --accent-pink: #FF6AC1;
+  --warn:        #FFBD2E;
+  --err:         #FF6161;
+
+  /* Apple's own monospace first — real SF Mono on real Apple devices.
+     JetBrains Mono is the closest open fallback for everyone else. */
+  --font-mono: ui-monospace, "SF Mono", "SFMono-Regular", Menlo, Monaco,
+               "JetBrains Mono", Consolas, monospace;
+}
+
+*, *::before, *::after{ box-sizing: border-box; margin: 0; padding: 0; }
+@media (prefers-reduced-motion: reduce){
+  *, *::before, *::after{ animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
+
+html, body{ height: 100%; }
+body{
+  font-family: var(--font-mono);
+  color: var(--text);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ==========================================================================
+   2. DESKTOP BACKDROP
+   Simulates a blurred macOS wallpaper behind the window — soft color blobs,
+   heavily blurred, so the terminal's frosted-glass vibrancy has something
+   to actually show through.
+   ========================================================================== */
+.desktop{
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(circle at 15% 20%, #3B2A6B 0%, transparent 45%),
+    radial-gradient(circle at 85% 15%, #1F5C6B 0%, transparent 45%),
+    radial-gradient(circle at 50% 90%, #5C2A4D 0%, transparent 55%),
+    linear-gradient(160deg, #0E0E12, #1A1A20 60%, #0E0E12);
+  filter: blur(60px) saturate(130%);
+  transform: scale(1.1); /* avoid blur edge artifacts */
+}
+
+/* ==========================================================================
+   3. FAKE macOS MENU BAR
+   Purely decorative context — makes it read as "a Mac", not just "a dark
+   box with three dots". Live clock is real (computed in JS section 5).
+   ========================================================================== */
+.menubar{
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 26px;
+  background: var(--menubar-bg);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  font-size: 12.5px;
+  color: rgba(255,255,255,0.85);
+  z-index: 50;
+  user-select: none;
+}
+.menubar-left, .menubar-right{ display: flex; align-items: center; gap: 18px; }
+.menubar-left span:first-child{ font-size: 14px; }
+.menubar b{ font-weight: 600; }
+.menubar-item{ opacity: 0.75; }
+@media (max-width: 640px){
+  .menubar-item:not(.mb-app){ display: none; }
+}
+
+/* ==========================================================================
+   4. TERMINAL WINDOW
+   ========================================================================== */
+.window-stage{
+  position: fixed;
+  inset: 26px 0 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.terminal-window{
+  width: min(880px, 100%);
+  height: min(600px, 100%);
+  background: var(--win-bg);
+  backdrop-filter: blur(26px) saturate(180%);
+  -webkit-backdrop-filter: blur(26px) saturate(180%);
+  border: 1px solid var(--win-border);
+  border-radius: 12px;
+  box-shadow: 0 30px 80px -20px rgba(0,0,0,0.6), 0 0 0 0.5px rgba(255,255,255,0.06);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: transform 0.35s cubic-bezier(.4,0,.2,1), opacity 0.35s ease, height 0.35s ease, width 0.35s ease;
+}
+
+.terminal-window.shake{ animation: shake 0.4s ease; }
+@keyframes shake{
+  0%, 100%{ transform: translateX(0); }
+  20%{ transform: translateX(-8px); }
+  40%{ transform: translateX(7px); }
+  60%{ transform: translateX(-5px); }
+  80%{ transform: translateX(3px); }
+}
+
+.terminal-window.minimized{ height: 44px !important; }
+.terminal-window.minimized .term-body{ display: none; }
+
+.terminal-window.fullscreen{
+  width: 100vw;
+  height: calc(100vh - 26px);
+  border-radius: 0;
+}
+
+/* Title bar */
+.term-titlebar{
+  height: 40px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  background: rgba(255,255,255,0.02);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  position: relative;
+  cursor: default;
+}
+.traffic-lights{ display: flex; gap: 8px; z-index: 2; }
+.tl{
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  border: none;
+  position: relative;
+  cursor: pointer;
+}
+.tl-red{ background: var(--mac-red); }
+.tl-yellow{ background: var(--mac-yellow); }
+.tl-green{ background: var(--mac-green); }
+.tl::after{
+  content: "";
+  position: absolute; inset: 0;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.25);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.tl:hover::after{ opacity: 1; }
+
+.term-title{
+  position: absolute;
+  left: 50%; transform: translateX(-50%);
+  font-size: 12.5px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+/* Body / output */
+.term-body{
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 18px 10px;
+  font-size: 13.5px;
+  line-height: 1.65;
+  cursor: text;
+}
+.term-body::-webkit-scrollbar{ width: 8px; }
+.term-body::-webkit-scrollbar-thumb{ background: rgba(255,255,255,0.12); border-radius: 4px; }
+.term-body::-webkit-scrollbar-track{ background: transparent; }
+
+.line{ white-space: pre-wrap; word-break: break-word; }
+.line.dim{ color: var(--text-dim); }
+.line.faint{ color: var(--text-faint); }
+.line.success{ color: var(--prompt-green); }
+.line.warn{ color: var(--warn); }
+.line.err{ color: var(--err); }
+.line.accent{ color: var(--accent-blue); }
+.line a{ color: var(--accent-blue); text-decoration: underline; text-underline-offset: 2px; }
+.line a:hover{ color: var(--accent-pink); }
+.banner-line{ color: var(--accent-blue); white-space: pre; font-size: 11.5px; line-height: 1.35; }
+@media (max-width: 640px){ .banner-line{ font-size: 7px; } }
+
+.section-head{ color: #fff; font-weight: 700; margin-top: 4px; }
+.kv{ display: flex; gap: 10px; }
+.kv .k{ color: var(--text-dim); min-width: 90px; flex-shrink: 0; }
+
+.prompt-row{ display: flex; gap: 8px; flex-wrap: wrap; }
+.prompt-tag{ color: var(--prompt-green); flex-shrink: 0; }
+.prompt-path{ color: var(--accent-blue); flex-shrink: 0; }
+.prompt-sep{ color: var(--text-dim); flex-shrink: 0; }
+
+/* Active input line */
+.input-line{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.typed{ color: var(--text); white-space: pre-wrap; word-break: break-word; }
+.cursor{
+  display: inline-block;
+  width: 8px; height: 16px;
+  background: var(--text);
+  animation: blink 1s step-end infinite;
+  transform: translateY(3px);
+}
+@keyframes blink{ 50%{ opacity: 0; } }
+#hidden-input{
+  position: absolute;
+  opacity: 0;
+  width: 1px; height: 1px;
+  pointer-events: none;
+}
+
+.command-grid{
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 4px 18px;
+  margin: 4px 0 2px;
+}
+.command-grid .cmd{ color: var(--accent-blue); }
+</style>
+</head>
+<body>
+
+<div class="desktop"></div>
+
+<!-- Fake menu bar for full macOS context -->
+<div class="menubar">
+  <div class="menubar-left">
+    <span></span>
+    <b class="mb-app">Terminal</b>
+    <span class="menubar-item">File</span>
+    <span class="menubar-item">Edit</span>
+    <span class="menubar-item">View</span>
+    <span class="menubar-item">Shell</span>
+  </div>
+  <div class="menubar-right">
+    <span class="menubar-item">manoj</span>
+    <span id="mb-clock">--:--</span>
+  </div>
+</div>
+
+<div class="window-stage">
+  <div class="terminal-window" id="term-window">
+    <div class="term-titlebar" id="titlebar">
+      <div class="traffic-lights">
+        <button class="tl tl-red" id="tl-close" aria-label="Close"></button>
+        <button class="tl tl-yellow" id="tl-min" aria-label="Minimize"></button>
+        <button class="tl tl-green" id="tl-zoom" aria-label="Zoom"></button>
+      </div>
+      <div class="term-title">manoj — zsh — 100×32</div>
+    </div>
+
+    <div class="term-body" id="term-body">
+      <!-- Output is streamed in by JS. Initial boot content prints on load. -->
+    </div>
+  </div>
+</div>
+
+<input id="hidden-input" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+
+<script>
+/* ============================================================================
+   JS SECTION 1 — DATA
+   Every real fact about Manoj lives here. Nothing in this object was
+   invented — anything left blank prints an honest "not added yet" message
+   instead of a guess. Edit this object to update the whole site.
+   ============================================================================ */
+const DATA = {
+  name: "Manoj S",
+  title: "Aspiring Cloud Engineer · Python & Django Developer",
+  location: "Chennai, Tamil Nadu, India",
+  email: "manomaghi6@gmail.com",
+  phone: "+91 91506 94370",
+  github: "https://github.com/Mano11x",
+  linkedin: "", // EDIT ME: add your LinkedIn URL here
+  resume: "",   // EDIT ME: add a link to your resume PDF here
+
+  about: [
+    "I'm Manoj — a developer based in Chennai, building my way from a",
+    "B.Com background into cloud engineering. I learn by building real",
+    "things, not just tutorials — right now that means Python, Django,",
+    "and a self-hosted AI assistant of my own called JARVIS.",
+    "",
+    "I get genuinely absorbed in what I'm building — obsessed enough that",
+    "I once stepped out of the bath mid-shower because I'd figured out",
+    "a bug fix and needed to write it down before I lost it."
+  ],
+
+  education: [
+    { school: "University of Madras", detail: "B.Com", years: "2021 – 2024" },
+    { school: "UNIQ Technologies", detail: "Python Full-Stack Development", years: "2021 – 2024" }
+  ],
+
+  skills: [
+    { name: "Python",              status: "active"   },
+    { name: "Django",              status: "active"   },
+    { name: "HTML & CSS",          status: "active"   },
+    { name: "MySQL",                status: "active"   },
+    { name: "Git & GitHub",        status: "active"   },
+    { name: "Communication",       status: "active"   },
+    { name: "Data Structures & Algorithms (LeetCode)", status: "learning" },
+    { name: "AWS (EC2, S3, Lambda)", status: "learning" },
+  ],
+
+  projects: [
+    {
+      slug: "jarvis",
+      name: "JARVIS",
+      oneLiner: "A self-hosted personal AI assistant with local LLM, voice, and a live neural visualization UI.",
+      stack: ["Django", "Ollama (llama3.2:1b)", "Three.js", "SQLite", "Text-to-Speech"],
+      status: "In development",
+      github: "https://github.com/Mano11x/JARVIS",
+      live: "" // EDIT ME: add a live URL if/when it's deployed
+    },
+    {
+      slug: "resume-scanner",
+      name: "Resume Scanner",
+      oneLiner: "Scans a resume, scores it out of 10 against ATS + skill criteria, and recommends exactly what to fix.",
+      stack: ["Python"],
+      status: "In development",
+      github: "", // EDIT ME: add the specific repo link once it's up
+      live: ""
+    },
+    {
+      slug: "blog-platform",
+      name: "Blog Platform",
+      oneLiner: "A full-stack blog application built end-to-end in Python.",
+      stack: ["Python", "Django"],
+      status: "In development",
+      github: "",
+      live: ""
+    }
+  ]
+};
+
+/* ============================================================================
+   JS SECTION 2 — VERIFIED ASCII BANNER
+   Generated and column-checked (all 7 rows are exactly the same length)
+   before being pasted in here, so it can't render lopsided.
+   ============================================================================ */
+const BANNER = `█   █   ███   █   █   ███       █  
+██ ██  █   █  ██  █  █   █      █  
+█ █ █  █   █  █ █ █  █   █      █  
+█   █  █████  █  ██  █   █      █  
+█   █  █   █  █   █  █   █  █   █  
+█   █  █   █  █   █  █   █  █   █  
+█   █  █   █  █   █   ███    ███   `;
+
+/* ============================================================================
+   JS SECTION 3 — COMMANDS
+   Each command returns an array of "line objects" ({text, cls}) that get
+   rendered into the terminal body. Keeping this data-driven means adding a
+   new command later is just adding one more entry to this object.
+   ============================================================================ */
+const state = { history: [], historyIndex: -1 };
+
+function L(text, cls){ return { text: text ?? "", cls: cls || "" }; }
+function esc(str){
+  const d = document.createElement("div");
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+const COMMANDS = {
+  help(){
+    const list = Object.keys(COMMANDS).sort();
+    const lines = [
+      L("Available commands:", "section-head"),
+      { grid: list }
+    ];
+    return [
+      L("Available commands:", "section-head"),
+      L(""),
+      { html: `<div class="command-grid">${list.map(c => `<span class="cmd">${c}</span>`).join("")}</div>` },
+      L(""),
+      L("Tip: press Tab to autocomplete, ↑ / ↓ to reuse previous commands.", "dim"),
+    ];
+  },
+
+  about(){
+    return [L("whoami --verbose", "section-head"), L(""), ...DATA.about.map(l => L(l))];
+  },
+
+  whoami(){
+    return [L(`${DATA.name} — ${DATA.title}`)];
+  },
+
+  education(){
+    const out = [L("Education", "section-head"), L("")];
+    DATA.education.forEach(e => {
+      out.push(L(e.school, "accent"));
+      out.push(L(`${e.detail}  ·  ${e.years}`, "dim"));
+      out.push(L(""));
+    });
+    return out;
+  },
+
+  skills(){
+    const out = [L("Skills", "section-head"), L("")];
+    DATA.skills.forEach(s => {
+      const tag = s.status === "active" ? "[active] " : "[learning]";
+      const cls = s.status === "active" ? "success" : "warn";
+      out.push({ html: `<div class="line"><span class="${cls}">${tag}</span> ${esc(s.name)}</div>` });
+    });
+    out.push(L(""));
+    out.push({ html: `<div class="line">GitHub: <a href="${DATA.github}" target="_blank" rel="noopener">${DATA.github.replace("https://","")}</a></div>` });
+    return out;
+  },
+
+  projects(){
+    const out = [L("Projects", "section-head"), L("(run 'project <name>' for full details, e.g. 'project jarvis')", "dim"), L("")];
+    DATA.projects.forEach((p, i) => {
+      out.push(L(`${i + 1}. ${p.name}`, "accent"));
+      out.push(L(`   ${p.oneLiner}`, ""));
+      out.push(L(`   status: ${p.status}`, "dim"));
+      out.push(L(""));
+    });
+    return out;
+  },
+
+  project(args){
+    if (!args.length) return [L("Usage: project <name>", "warn"), L("Try: project jarvis", "dim")];
+    const query = args.join(" ").toLowerCase().replace(/\s+/g, "-");
+    const p = DATA.projects.find(x => x.slug.includes(query) || x.name.toLowerCase().includes(query));
+    if (!p) return [L(`No project matching "${args.join(" ")}". Run 'projects' to see all.`, "err")];
+
+    const out = [L(p.name, "section-head"), L(p.oneLiner, ""), L("")];
+    out.push({ html: `<div class="kv"><span class="k">Stack</span><span>${p.stack.join(", ")}</span></div>` });
+    out.push({ html: `<div class="kv"><span class="k">Status</span><span>${p.status}</span></div>` });
+    out.push({ html: `<div class="kv"><span class="k">GitHub</span><span>${p.github ? `<a href="${p.github}" target="_blank" rel="noopener">${p.github.replace("https://","")}</a>` : "not linked yet"}</span></div>` });
+    out.push({ html: `<div class="kv"><span class="k">Live</span><span>${p.live ? `<a href="${p.live}" target="_blank" rel="noopener">${p.live}</a>` : "not deployed yet"}</span></div>` });
+    return out;
+  },
+
+  contact(){
+    const out = [L("Contact", "section-head"), L("")];
+    out.push({ html: `<div class="kv"><span class="k">Email</span><a href="mailto:${DATA.email}">${DATA.email}</a></div>` });
+    out.push({ html: `<div class="kv"><span class="k">Phone</span><a href="tel:${DATA.phone.replace(/\s+/g,"")}">${DATA.phone}</a></div>` });
+    out.push({ html: `<div class="kv"><span class="k">GitHub</span><a href="${DATA.github}" target="_blank" rel="noopener">${DATA.github.replace("https://","")}</a></div>` });
+    out.push({ html: `<div class="kv"><span class="k">LinkedIn</span><span>${DATA.linkedin ? `<a href="${DATA.linkedin}" target="_blank" rel="noopener">${DATA.linkedin}</a>` : "not added yet"}</span></div>` });
+    out.push({ html: `<div class="kv"><span class="k">Location</span><span>${DATA.location}</span></div>` });
+    return out;
+  },
+
+  github(){
+    window.open(DATA.github, "_blank", "noopener");
+    return [L(`Opening ${DATA.github} ...`, "dim")];
+  },
+
+  resume(){
+    if (DATA.resume){
+      window.open(DATA.resume, "_blank", "noopener");
+      return [L("Opening resume ...", "dim")];
+    }
+    return [L("Resume isn't linked yet — email me and I'll send it straight over.", "warn"), L(`  → ${DATA.email}`, "accent")];
+  },
+
+  neofetch(){
+    const now = new Date();
+    const days = Math.max(0, Math.floor((now - new Date("2025-01-01T00:00:00+05:30")) / 86400000));
+    const info = [
+      ["OS", "Human (Chennai Edition)"],
+      ["Host", DATA.location],
+      ["Kernel", "B.Com → Cloud Engineer"],
+      ["Uptime", `${days} days learning`],
+      ["Shell", "zsh"],
+      ["Languages", "Python, Django"],
+      ["Currently", "Building JARVIS"],
+    ];
+    const kv = info.map(([k,v]) => `<div class="kv"><span class="k">${k}</span><span>${v}</span></div>`).join("");
+    return [{ html: `<pre class="banner-line">${BANNER}</pre>` }, L(""), { html: kv }];
+  },
+
+  banner(){
+    return [{ html: `<pre class="banner-line">${BANNER}</pre>` }];
+  },
+
+  funfact(){
+    return [L("I once got out of the bath — mid-shower — because I'd", ""), L("figured out a bug fix in my head and had to write it down", ""), L("before I lost it. That's the level we're operating at. 🛁💻", "accent")];
+  },
+
+  date(){
+    return [L(new Date().toString(), "dim")];
+  },
+
+  history(){
+    if (!state.history.length) return [L("No commands run yet.", "dim")];
+    return state.history.map((c, i) => L(`  ${i + 1}  ${c}`, "dim"));
+  },
+
+  sudo(args){
+    if (args.join(" ").toLowerCase().includes("make coffee")){
+      return [L("☕ Brewing... done. Now go build something.", "success")];
+    }
+    return [L(`manoj is not in the sudoers file. This incident will be reported. (not really)`, "err")];
+  },
+
+  clear(){
+    document.getElementById("term-body").innerHTML = "";
+    return null;
+  },
+
+  exit(){
+    return [L("There's nothing to exit to — this is a website. Nice try though. 👋", "dim")];
+  },
+};
+COMMANDS["ls"] = COMMANDS.help;
+
+/* ============================================================================
+   JS SECTION 4 — RENDERING + INPUT HANDLING
+   ============================================================================ */
+const body = document.getElementById("term-body");
+const hiddenInput = document.getElementById("hidden-input");
+
+function appendLines(lines){
+  if (!lines) return;
+  lines.forEach(item => {
+    const div = document.createElement("div");
+    if (item.html !== undefined){
+      div.innerHTML = item.html;
+    } else {
+      div.className = "line " + (item.cls || "");
+      div.textContent = item.text;
+    }
+    body.appendChild(div);
+  });
+  scrollToBottom();
+}
+
+function scrollToBottom(){
+  body.scrollTop = body.scrollHeight;
+}
+
+function renderPromptRow(command){
+  const row = document.createElement("div");
+  row.className = "prompt-row";
+  row.innerHTML = `<span class="prompt-tag">manoj@chennai</span><span class="prompt-sep">:</span><span class="prompt-path">~</span><span class="prompt-sep">%</span><span class="typed">${esc(command)}</span>`;
+  body.appendChild(row);
+}
+
+function runCommand(raw){
+  const trimmed = raw.trim();
+  if (!trimmed){ renderNewInputLine(); return; }
+
+  renderPromptRow(trimmed);
+  state.history.push(trimmed);
+  state.historyIndex = state.history.length;
+
+  const [cmd, ...args] = trimmed.split(/\s+/);
+  const key = cmd.toLowerCase();
+
+  if (COMMANDS[key]){
+    const result = COMMANDS[key](args);
+    if (result) appendLines(result);
+  } else {
+    appendLines([L(`command not found: ${cmd}`, "err"), L("Type 'help' to see everything available.", "dim")]);
+  }
+
+  if (key !== "clear") appendLines([L("")]);
+  renderNewInputLine();
+}
+
+let activeInputLine = null;
+function renderNewInputLine(){
+  const row = document.createElement("div");
+  row.className = "input-line";
+  row.innerHTML = `<span class="prompt-tag">manoj@chennai</span><span class="prompt-sep">:</span><span class="prompt-path">~</span><span class="prompt-sep">%</span><span class="typed" id="live-typed"></span><span class="cursor"></span>`;
+  body.appendChild(row);
+  activeInputLine = row;
+  scrollToBottom();
+}
+
+function updateLiveTyped(){
+  const el = document.getElementById("live-typed");
+  if (el) el.textContent = hiddenInput.value;
+}
+
+/* Keep the hidden input focused so both desktop typing and mobile virtual
+   keyboards work — clicking anywhere in the terminal refocuses it. */
+document.querySelector(".term-body").addEventListener("click", () => hiddenInput.focus());
+window.addEventListener("load", () => hiddenInput.focus());
+
+hiddenInput.addEventListener("input", updateLiveTyped);
+
+hiddenInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter"){
+    const val = hiddenInput.value;
+    hiddenInput.value = "";
+    if (activeInputLine) activeInputLine.remove();
+    runCommand(val);
+  } else if (e.key === "ArrowUp"){
+    e.preventDefault();
+    if (state.historyIndex > 0){
+      state.historyIndex--;
+      hiddenInput.value = state.history[state.historyIndex];
+      updateLiveTyped();
+    }
+  } else if (e.key === "ArrowDown"){
+    e.preventDefault();
+    if (state.historyIndex < state.history.length - 1){
+      state.historyIndex++;
+      hiddenInput.value = state.history[state.historyIndex];
+    } else {
+      state.historyIndex = state.history.length;
+      hiddenInput.value = "";
+    }
+    updateLiveTyped();
+  } else if (e.key === "Tab"){
+    e.preventDefault();
+    const partial = hiddenInput.value.toLowerCase();
+    if (!partial) return;
+    const matches = Object.keys(COMMANDS).filter(c => c.startsWith(partial));
+    if (matches.length === 1){
+      hiddenInput.value = matches[0] + " ";
+      updateLiveTyped();
+    } else if (matches.length > 1 && activeInputLine){
+      appendLines([L(matches.join("   "), "dim")]);
+      scrollToBottom();
+    }
+  }
+});
+
+/* ============================================================================
+   JS SECTION 5 — MENU BAR CLOCK
+   ============================================================================ */
+function updateClock(){
+  const now = new Date();
+  const opts = { hour: "2-digit", minute: "2-digit", weekday: "short", day: "numeric", month: "short" };
+  document.getElementById("mb-clock").textContent = now.toLocaleString("en-IN", opts);
+}
+updateClock();
+setInterval(updateClock, 1000 * 30);
+
+/* ============================================================================
+   JS SECTION 6 — TRAFFIC LIGHT BEHAVIOR (real macOS-style interactions)
+   ============================================================================ */
+const win = document.getElementById("term-window");
+
+document.getElementById("tl-close").addEventListener("click", () => {
+  win.classList.add("shake");
+  setTimeout(() => win.classList.remove("shake"), 400);
+  appendLines([L(""), L("You can't actually close this one — refresh the page if you really want to leave. 👋", "warn")]);
+  scrollToBottom();
+});
+
+document.getElementById("tl-min").addEventListener("click", () => {
+  win.classList.toggle("minimized");
+});
+
+document.getElementById("tl-zoom").addEventListener("click", () => {
+  win.classList.toggle("fullscreen");
+});
+
+/* ============================================================================
+   JS SECTION 7 — BOOT SEQUENCE
+   Prints the banner + welcome message once when the page loads.
+   ============================================================================ */
+appendLines([
+  { html: `<pre class="banner-line">${BANNER}</pre>` },
+  L(""),
+  L(`${DATA.title}`, "dim"),
+  L(`${DATA.location}`, "dim"),
+  L(""),
+  L("Type 'help' to see what this terminal can do.", "accent"),
+  L(""),
+]);
+renderNewInputLine();
+</script>
+</body>
+</html>
