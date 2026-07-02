@@ -248,6 +248,19 @@ body{
 .line.accent{ color: var(--accent-blue); }
 .line a{ color: var(--accent-blue); text-decoration: underline; text-underline-offset: 2px; }
 .line a:hover{ color: var(--accent-pink); }
+.skills-table{
+  display: grid;
+  grid-template-columns: 1fr minmax(100px, 130px);
+  gap: 8px 16px;
+  padding: 10px 0;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.skill-row{ display: contents; }
+.skill-name{ color: var(--text); }
+.skill-status{ text-transform: uppercase; font-size: 11px; letter-spacing: 0.12em; padding: 2px 8px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: flex-end; }
+.skill-status.active{ background: rgba(66, 246, 125, 0.12); color: var(--prompt-green); }
+.skill-status.learning{ background: rgba(255, 187, 93, 0.14); color: var(--warn); }
 .banner-line{ color: #6AF9A1; white-space: pre; font-size: 14px; line-height: 1.0; letter-spacing: -0.02em; margin-bottom: 10px; opacity: 0.95; text-shadow: 0 0 6px rgba(106, 249, 161, 0.25); }
 @media (max-width: 640px){ .banner-line{ font-size: 9px; } }
 
@@ -256,7 +269,7 @@ body{
 .kv .k{ color: var(--text-dim); min-width: 90px; flex-shrink: 0; }
 
 .prompt-row{ display: flex; gap: 8px; flex-wrap: wrap; direction: ltr; unicode-bidi: isolate; }
-.prompt-tag{ color: var(--prompt-green); flex-shrink: 0; font-weight: 700; }
+.prompt-tag{ color: var(--text-dim); flex-shrink: 0; font-weight: 700; }
 .prompt-path{ color: var(--text-dim); flex-shrink: 0; }
 .prompt-sep{ color: var(--text-dim); flex-shrink: 0; }
 
@@ -484,15 +497,18 @@ const COMMANDS = {
   },
 
   skills(){
-    const out = [L("Skills", "section-head"), L("")];
-    DATA.skills.forEach(s => {
-      const tag = s.status === "active" ? "[active] " : "[learning]";
-      const cls = s.status === "active" ? "success" : "warn";
-      out.push({ html: `<div class="line"><span class="${cls}">${tag}</span> ${esc(s.name)}</div>` });
-    });
-    out.push(L(""));
-    out.push({ html: `<div class="line">GitHub: <a href="${DATA.github}" target="_blank" rel="noopener">${DATA.github.replace("https://","")}</a></div>` });
-    return out;
+    const rows = DATA.skills.map(s => {
+      const status = s.status === "active" ? "active" : "learning";
+      return `<div class="skill-row"><span class="skill-name">${esc(s.name)}</span><span class="skill-status ${status}">${status}</span></div>`;
+    }).join("");
+
+    return [
+      L("Skills", "section-head"),
+      L(""),
+      { html: `<div class="skills-table">${rows}</div>` },
+      L(""),
+      { html: `<div class="line">GitHub: <a href="${DATA.github}" target="_blank" rel="noopener">${DATA.github.replace("https://","")}</a></div>` },
+    ];
   },
 
   projects(){
