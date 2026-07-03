@@ -1,0 +1,229 @@
+/* ============================================================================
+   terminal_app/static/terminal_app/css/style.css
+   ----------------------------------------------------------------------------
+   Same macOS-Terminal look as the original static version — traffic lights,
+   frosted-glass window, blurred desktop backdrop — now served as a proper
+   Django static file instead of being inlined in the HTML.
+   ============================================================================ */
+
+/* ---- 1. Tokens ---- */
+:root{
+  --mac-red:    #FF5F56;
+  --mac-yellow: #FFBD2E;
+  --mac-green:  #27C93F;
+
+  --win-bg:      rgba(30, 30, 32, 0.78);
+  --win-border:  rgba(255,255,255,0.08);
+  --menubar-bg:  rgba(20, 20, 22, 0.55);
+
+  --text:        #F2F2F2;
+  --text-dim:    #8E8E93;
+  --text-faint:  #5A5A5E;
+
+  --prompt-green:#29C940;
+  --accent-blue: #4DA3FF;
+  --accent-pink: #FF6AC1;
+  --warn:        #FFBD2E;
+  --err:         #FF6161;
+
+  --font-mono: ui-monospace, "SF Mono", "SFMono-Regular", Menlo, Monaco,
+               "JetBrains Mono", Consolas, monospace;
+}
+
+*, *::before, *::after{ box-sizing: border-box; margin: 0; padding: 0; }
+@media (prefers-reduced-motion: reduce){
+  *, *::before, *::after{ animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
+
+html, body{ height: 100%; }
+body{
+  font-family: var(--font-mono);
+  color: var(--text);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---- 2. Desktop backdrop ---- */
+.desktop{
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(circle at 15% 20%, #3B2A6B 0%, transparent 45%),
+    radial-gradient(circle at 85% 15%, #1F5C6B 0%, transparent 45%),
+    radial-gradient(circle at 50% 90%, #5C2A4D 0%, transparent 55%),
+    linear-gradient(160deg, #0E0E12, #1A1A20 60%, #0E0E12);
+  filter: blur(60px) saturate(130%);
+  transform: scale(1.1);
+}
+
+/* ---- 3. Fake macOS menu bar ---- */
+.menubar{
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 26px;
+  background: var(--menubar-bg);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  font-size: 12.5px;
+  color: rgba(255,255,255,0.85);
+  z-index: 50;
+  user-select: none;
+}
+.menubar-left, .menubar-right{ display: flex; align-items: center; gap: 18px; }
+.menubar-left span:first-child{ font-size: 14px; }
+.menubar b{ font-weight: 600; }
+.menubar-item{ opacity: 0.75; }
+@media (max-width: 640px){
+  .menubar-item:not(.mb-app){ display: none; }
+}
+
+/* ---- 4. Terminal window ---- */
+.window-stage{
+  position: fixed;
+  inset: 26px 0 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.terminal-window{
+  width: min(880px, 100%);
+  height: min(600px, 100%);
+  background: var(--win-bg);
+  backdrop-filter: blur(26px) saturate(180%);
+  -webkit-backdrop-filter: blur(26px) saturate(180%);
+  border: 1px solid var(--win-border);
+  border-radius: 12px;
+  box-shadow: 0 30px 80px -20px rgba(0,0,0,0.6), 0 0 0 0.5px rgba(255,255,255,0.06);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: transform 0.35s cubic-bezier(.4,0,.2,1), opacity 0.35s ease, height 0.35s ease, width 0.35s ease;
+}
+
+.terminal-window.shake{ animation: shake 0.4s ease; }
+@keyframes shake{
+  0%, 100%{ transform: translateX(0); }
+  20%{ transform: translateX(-8px); }
+  40%{ transform: translateX(7px); }
+  60%{ transform: translateX(-5px); }
+  80%{ transform: translateX(3px); }
+}
+
+.terminal-window.minimized{ height: 44px !important; }
+.terminal-window.minimized .term-body{ display: none; }
+
+.terminal-window.fullscreen{
+  width: 100vw;
+  height: calc(100vh - 26px);
+  border-radius: 0;
+}
+
+.term-titlebar{
+  height: 40px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  background: rgba(255,255,255,0.02);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  position: relative;
+  cursor: default;
+}
+.traffic-lights{ display: flex; gap: 8px; z-index: 2; }
+.tl{
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  border: none;
+  position: relative;
+  cursor: pointer;
+}
+.tl-red{ background: var(--mac-red); }
+.tl-yellow{ background: var(--mac-yellow); }
+.tl-green{ background: var(--mac-green); }
+.tl::after{
+  content: "";
+  position: absolute; inset: 0;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.25);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.tl:hover::after{ opacity: 1; }
+
+.term-title{
+  position: absolute;
+  left: 50%; transform: translateX(-50%);
+  font-size: 12.5px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.term-body{
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 18px 10px;
+  font-size: 13.5px;
+  line-height: 1.65;
+  cursor: text;
+}
+.term-body::-webkit-scrollbar{ width: 8px; }
+.term-body::-webkit-scrollbar-thumb{ background: rgba(255,255,255,0.12); border-radius: 4px; }
+.term-body::-webkit-scrollbar-track{ background: transparent; }
+
+.line{ white-space: pre-wrap; word-break: break-word; }
+.line.dim{ color: var(--text-dim); }
+.line.faint{ color: var(--text-faint); }
+.line.success{ color: var(--prompt-green); }
+.line.warn{ color: var(--warn); }
+.line.err{ color: var(--err); }
+.line.accent{ color: var(--accent-blue); }
+.line a{ color: var(--accent-blue); text-decoration: underline; text-underline-offset: 2px; }
+.line a:hover{ color: var(--accent-pink); }
+.banner-line{ color: var(--accent-blue); white-space: pre; font-size: 11.5px; line-height: 1.35; }
+@media (max-width: 640px){ .banner-line{ font-size: 7px; } }
+
+.section-head{ color: #fff; font-weight: 700; margin-top: 4px; }
+.kv{ display: flex; gap: 10px; }
+.kv .k{ color: var(--text-dim); min-width: 90px; flex-shrink: 0; }
+
+.prompt-row{ display: flex; gap: 8px; flex-wrap: wrap; }
+.prompt-tag{ color: var(--prompt-green); flex-shrink: 0; }
+.prompt-path{ color: var(--accent-blue); flex-shrink: 0; }
+.prompt-sep{ color: var(--text-dim); flex-shrink: 0; }
+
+.input-line{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.typed{ color: var(--text); white-space: pre-wrap; word-break: break-word; }
+.cursor{
+  display: inline-block;
+  width: 8px; height: 16px;
+  background: var(--text);
+  animation: blink 1s step-end infinite;
+  transform: translateY(3px);
+}
+@keyframes blink{ 50%{ opacity: 0; } }
+#hidden-input{
+  position: absolute;
+  opacity: 0;
+  width: 1px; height: 1px;
+  pointer-events: none;
+}
+
+.command-grid{
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 4px 18px;
+  margin: 4px 0 2px;
+}
+.command-grid .cmd{ color: var(--accent-blue); }

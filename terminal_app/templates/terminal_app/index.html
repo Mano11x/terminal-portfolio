@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>manoj@portfolio ~ %</title>
+<meta name="description" content="Manoj S — professional terminal-style portfolio.">
+
+<!--
+  ============================================================================
+  MANOJ // TERMINAL PORTFOLIO — SINGLE FILE BUILD
+  ============================================================================
+  A real, typed, interactive terminal — styled like macOS Terminal.app —
+  instead of a scrolling page. Visitors type commands (help, about, projects,
+  skills, contact...) and get real responses, exactly like a shell session.
+  ============================================================================
+-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --mac-red:    #D65045;
+  --mac-yellow: #CA9E4F;
+  --mac-green:  #3BDD8C;
+
+  --win-bg:      rgba(6, 8, 12, 0.98);
+  --win-border:  rgba(255,255,255,0.10);
+  --menubar-bg:  rgba(12, 14, 18, 0.96);
+
+  --text:        #E6E8EA;
+  --text-dim:    #7C8695;
+  --text-faint:  #4A525B;
+
+  --prompt-green:#39FF96;
+  --accent-blue: #7DB4FF;
+  --accent-pink: #C390FF;
+  --warn:        #EBCA74;
+  --err:         #FF676E;
+
+  --font-mono: ui-monospace, "SF Mono", "SFMono-Regular", Menlo, Monaco,
+               "JetBrains Mono", Consolas, monospace;
+}
+
+*, *::before, *::after{ box-sizing: border-box; margin: 0; padding: 0; }
+@media (prefers-reduced-motion: reduce){
+  *, *::before, *::after{ animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
+
+html, body{ min-height: 100%; }
+body{
+  font-family: var(--font-mono);
+  color: var(--text);
+  overflow: hidden;
+  background: radial-gradient(circle at top, rgba(80, 95, 120, 0.06), transparent 16%),
+              linear-gradient(180deg, #040507 0%, #080b10 30%, #020204 100%);
+  -webkit-font-smoothing: antialiased;
+}
+
+.desktop{
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 18%, rgba(80, 95, 120, 0.08), transparent 24%),
+    radial-gradient(circle at 82% 18%, rgba(100, 110, 130, 0.06), transparent 24%),
+    linear-gradient(180deg, #050608 0%, #090c13 28%, #020204 100%);
+  filter: blur(24px) saturate(115%);
+  transform: scale(1.02);
+}
+
+.menubar{
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 26px;
+  background: rgba(8, 10, 14, 0.96);
+  backdrop-filter: blur(20px) saturate(120%);
+  -webkit-backdrop-filter: blur(20px) saturate(120%);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  font-size: 12.5px;
+  color: rgba(220,220,220,0.82);
+  z-index: 50;
+  user-select: none;
+}
+.menubar-left, .menubar-right{ display: flex; align-items: center; gap: 18px; }
+.menubar-left span:first-child{ font-size: 14px; }
+.menubar b{ font-weight: 600; }
+.menubar-item{ opacity: 0.75; }
+@media (max-width: 640px){
+  .menubar-item:not(.mb-app){ display: none; }
+}
+
+.window-stage{
+  position: fixed;
+  inset: 26px 0 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.terminal-window{
+  width: min(940px, calc(100vw - 40px));
+  max-width: 100%;
+  max-height: calc(100vh - 84px);
+  height: min(720px, calc(100vh - 84px));
+  background: rgba(6, 8, 12, 0.94);
+  backdrop-filter: blur(24px) saturate(120%);
+  -webkit-backdrop-filter: blur(24px) saturate(120%);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 24px;
+  box-shadow: 0 50px 140px -34px rgba(0,0,0,0.88), inset 0 2px 4px rgba(255,255,255,0.03);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: transform 0.25s ease, opacity 0.25s ease, height 0.25s ease, width 0.25s ease;
+}
+
+.terminal-window.shake{ animation: shake 0.4s ease; }
+@keyframes shake{
+  0%, 100%{ transform: translateX(0); }
+  20%{ transform: translateX(-8px); }
+  40%{ transform: translateX(7px); }
+  60%{ transform: translateX(-5px); }
+  80%{ transform: translateX(3px); }
+}
+
+.terminal-window.minimized{ height: 44px !important; }
+.terminal-window.minimized .term-body{ display: none; }
+
+.terminal-window.fullscreen{
+  width: 100vw;
+  height: calc(100vh - 26px);
+  border-radius: 0;
+}
+
+.term-titlebar{
+  height: 42px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  background: rgba(16, 18, 22, 0.96);
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  box-shadow: inset 0 -1px 0 rgba(255,255,255,0.03);
+  position: relative;
+  cursor: default;
+}
+.traffic-lights{ display: flex; gap: 8px; z-index: 2; }
+.tl{
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  border: none;
+  position: relative;
+  cursor: pointer;
+}
+.tl-red{ background: var(--mac-red); }
+.tl-yellow{ background: var(--mac-yellow); }
+.tl-green{ background: var(--mac-green); }
+.tl::after{
+  content: "";
+  position: absolute; inset: 0;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.25);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.tl:hover::after{ opacity: 1; }
+
+.term-title{
+  position: absolute;
+  left: 50%; transform: translateX(-50%);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: rgba(180, 186, 196, 0.85);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.term-body{
+  flex: 1;
+  overflow-y: auto;
+  padding: 22px 24px 18px;
+  font-size: 13.6px;
+  line-height: 1.72;
+  cursor: text;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+  direction: ltr;
+  background: rgba(255,255,255,0.01);
+  box-shadow: inset 0 0 140px rgba(0,0,0,0.24);
+}
+.term-body::-webkit-scrollbar{ width: 8px; }
+.term-body::-webkit-scrollbar-thumb{ background: rgba(255,255,255,0.12); border-radius: 4px; }
+.term-body::-webkit-scrollbar-track{ background: transparent; }
+
+.line{ white-space: pre-wrap; word-break: break-word; direction: ltr; unicode-bidi: isolate; color: var(--text); }
+.line.dim{ color: var(--text-dim); }
+.line.faint{ color: var(--text-faint); }
+.line.success{ color: var(--prompt-green); }
+.line.warn{ color: var(--warn); }
+.line.err{ color: var(--err); }
+.line.accent{ color: var(--accent-blue); }
+.line a{ color: var(--accent-blue); text-decoration: underline; text-underline-offset: 2px; }
+.line a:hover{ color: var(--accent-pink); }
+.skills-table{
+  display: grid;
+  grid-template-columns: 1fr minmax(100px, 130px);
+  gap: 8px 16px;
+  padding: 10px 0;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.skill-row{ display: contents; }
+.skill-name{ color: var(--text); }
+.skill-status{ text-transform: uppercase; font-size: 11px; letter-spacing: 0.12em; padding: 2px 8px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: flex-end; }
+.skill-status.active{ background: rgba(66, 246, 125, 0.12); color: var(--prompt-green); }
+.skill-status.learning{ background: rgba(255, 187, 93, 0.14); color: var(--warn); }
+.banner-line{ color: #6AF9A1; white-space: pre; font-size: 14px; line-height: 1.0; letter-spacing: -0.02em; margin-bottom: 10px; opacity: 0.95; text-shadow: 0 0 6px rgba(106, 249, 161, 0.25); }
+@media (max-width: 640px){ .banner-line{ font-size: 9px; } }
+
+.section-head{ color: #fff; font-weight: 700; margin-top: 4px; }
+.kv{ display: flex; gap: 10px; }
+.kv .k{ color: var(--text-dim); min-width: 90px; flex-shrink: 0; }
+
+.prompt-row{ display: flex; gap: 8px; flex-wrap: wrap; direction: ltr; unicode-bidi: isolate; }
+.prompt-tag{ color: var(--text-dim); flex-shrink: 0; font-weight: 700; }
+.prompt-path{ color: var(--text-dim); flex-shrink: 0; }
+.prompt-sep{ color: var(--text-dim); flex-shrink: 0; }
+
+.input-line{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.typed{ color: var(--text); white-space: pre-wrap; word-break: break-word; direction: ltr; unicode-bidi: isolate; }
+.cursor{
+  display: inline-block;
+  width: 8px; height: 16px;
+  background: var(--text);
+  animation: blink 1s step-end infinite;
+  transform: translateY(3px);
+}
+@keyframes blink{ 50%{ opacity: 0; } }
+#hidden-input{
+  position: fixed;
+  left: 0; top: 0;
+  opacity: 0;
+  width: 1px; height: 1px;
+  pointer-events: none;
+  direction: ltr;
+}
+
+.command-grid{
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 4px 18px;
+  margin: 4px 0 2px;
+}
+.command-grid .cmd{ color: var(--accent-blue); }
+</style>
+</head>
+<body>
+
+<div class="desktop"></div>
+
+<div class="menubar">
+  <div class="menubar-left">
+    <span></span>
+    <b class="mb-app">Terminal</b>
+    <span class="menubar-item">File</span>
+    <span class="menubar-item">Edit</span>
+    <span class="menubar-item">View</span>
+    <span class="menubar-item">Shell</span>
+  </div>
+  <div class="menubar-right">
+    <span class="menubar-item">manoj</span>
+    <span id="mb-clock">--:--</span>
+  </div>
+</div>
+
+<div class="window-stage">
+  <div class="terminal-window" id="term-window">
+    <div class="term-titlebar" id="titlebar">
+      <div class="traffic-lights">
+        <button class="tl tl-red" id="tl-close" aria-label="Close"></button>
+        <button class="tl tl-yellow" id="tl-min" aria-label="Minimize"></button>
+        <button class="tl tl-green" id="tl-zoom" aria-label="Zoom"></button>
+      </div>
+      <div class="term-title">manoj@portfolio — zsh — 100×32</div>
+    </div>
+
+    <div class="term-body" id="term-body">
+      <!-- Output is streamed in by JS. Initial boot content prints on load. -->
+    </div>
+  </div>
+</div>
+
+<input id="hidden-input" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="text" dir="ltr">
+
+<script>
+const DATA = {
+  name: "Manoj S",
+  title: "Aspiring Cloud Engineer · Python & Django Developer",
+  location: "Chennai, Tamil Nadu, India",
+  email: "manomaghi6@gmail.com",
+  phone: "+91 91506 94370",
+  github: "https://github.com/Mano11x",
+  linkedin: "",
+  resume: "https://drive.google.com/file/d/1IR6IG6cqZ5TZ53NBn4pPxydz083D0ZUa/view?usp=sharing",
+
+  about: [
+    "I'm Manoj S, a Chennai-based cloud engineer and software developer.",
+    "I build production-ready applications with Python, Django, REST APIs,",
+    "and scalable cloud deployment workflows. My work blends backend",
+    "systems thinking with clean user experiences and reliable automation.",
+    "",
+    "Currently I am developing a self-hosted AI assistant called JARVIS,",
+    "focused on secure local inference, voice interaction, and polished",
+    "developer tooling for real-world productivity.",
+  ],
+
+  education: [
+    { school: "University of Madras", detail: "B.Com", years: "2021 – 2024" },
+    { Course: "UNIQ Technologies", detail: "Python Full-Stack Development", years: "2024 – 2025" }
+  ],
+
+  skills: [
+    { name: "Python",              status: "active"   },
+    { name: "Django",              status: "active"   },
+    { name: "HTML & CSS",          status: "active"   },
+    { name: "MySQL",                status: "active"   },
+    { name: "Git & GitHub",        status: "active"   },
+    { name: "Communication",       status: "active"   },
+    { name: "Data Structures & Algorithms (LeetCode)", status: "learning" },
+    { name: "AWS (EC2, S3, Lambda)", status: "learning" },
+  ],
+
+  projects: [
+    {
+      slug: "jarvis",
+      name: "JARVIS",
+      oneLiner: "A self-hosted personal AI assistant with local LLM, voice, and a live neural visualization UI.",
+      stack: ["Django", "Ollama (llama3.2:1b)", "Three.js", "SQLite", "Text-to-Speech"],
+      status: "In development",
+      github: "https://github.com/Mano11x/JARVIS",
+      live: ""
+    },
+    {
+      slug: "resume-scanner",
+      name: "Resume Scanner",
+      oneLiner: "Scans a resume, scores it out of 10 against ATS + skill criteria, and recommends exactly what to fix.",
+      stack: ["Python"],
+      status: "In development",
+      github: "",
+      live: ""
+    },
+    {
+      slug: "blog-platform",
+      name: "Blog Platform",
+      oneLiner: "A full-stack blog application built end-to-end in Python.",
+      stack: ["Python", "Django"],
+      status: "In development",
+      github: "",
+      live: ""
+    }
+  ]
+};
+
+const BANNER = `█   █   ███   █   █   ███       █  
+██ ██  █   █  ██  █  █   █      █  
+█ █ █  █   █  █ █ █  █   █      █  
+█   █  █████  █  ██  █   █      █  
+█   █  █   █  █   █  █   █  █   █  
+█   █  █   █  █   █  █   █  █   █  
+█   █  █   █  █   █   ███    ███   `;
+
+const state = { history: [], historyIndex: -1 };
+
+function L(text, cls){ return { text: text ?? "", cls: cls || "" }; }
+function esc(str){
+  const d = document.createElement("div");
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function openUrl(url){
+  const popup = window.open(url, "_blank", "noopener");
+  if (!popup){
+    const a = document.createElement("a");
+    a.href = url;
+    a.target = "_blank";
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+}
+
+const COMMANDS = {
+  help(){
+    const list = Object.keys(COMMANDS).sort();
+    return [
+      L("Available commands:", "section-head"),
+      L(""),
+      { html: `<div class="command-grid">${list.map(c => `<span class="cmd">${c}</span>`).join("")}</div>` },
+      L(""),
+      L("Tip: press Tab to autocomplete, ↑ / ↓ to reuse previous commands.", "dim"),
+    ];
+  },
+
+  about(){
+    return [L("whoami --verbose", "section-head"), L(""), ...DATA.about.map(l => L(l))];
+  },
+
+  whoami(){
+    return [L(`${DATA.name} — ${DATA.title}`)];
+  },
+
+  education(){
+    const out = [L("Education", "section-head"), L("")];
+    DATA.education.forEach(e => {
+      out.push(L(e.school, "accent"));
+      out.push(L(`${e.detail}  ·  ${e.years}`, "dim"));
+      out.push(L(""));
+    });
+    return out;
+  },
+
+  skills(){
+    const rows = DATA.skills.map(s => {
+      const status = s.status === "active" ? "active" : "learning";
+      return `<div class="skill-row"><span class="skill-name">${esc(s.name)}</span><span class="skill-status ${status}">${status}</span></div>`;
+    }).join("");
+
+    return [
+      L("Skills", "section-head"),
+      L(""),
+      { html: `<div class="skills-table">${rows}</div>` },
+      L(""),
+      { html: `<div class="line">GitHub: <a href="${DATA.github}" target="_blank" rel="noopener">${DATA.github.replace("https://","")}</a></div>` },
+    ];
+  },
+
+  projects(){
+    const out = [L("Projects", "section-head"), L("(run 'project <name>' for full details, e.g. 'project jarvis')", "dim"), L("")];
+    DATA.projects.forEach((p, i) => {
+      out.push(L(`${i + 1}. ${p.name}`, "accent"));
+      out.push(L(`   ${p.oneLiner}`, ""));
+      out.push(L(`   status: ${p.status}`, "dim"));
+      out.push(L(""));
+    });
+    return out;
+  },
+
+  project(args){
+    if (!args.length) return [L("Usage: project <name>", "warn"), L("Try: project jarvis", "dim")];
+    const query = args.join(" ").toLowerCase().replace(/\s+/g, "-");
+    const p = DATA.projects.find(x => x.slug.includes(query) || x.name.toLowerCase().includes(query));
+    if (!p) return [L(`No project matching "${args.join(" ")}". Run 'projects' to see all.`, "err")];
+
+    const out = [L(p.name, "section-head"), L(p.oneLiner, ""), L("")];
+    out.push({ html: `<div class="kv"><span class="k">Stack</span><span>${p.stack.join(", ")}</span></div>` });
+    out.push({ html: `<div class="kv"><span class="k">Status</span><span>${p.status}</span></div>` });
+    out.push({ html: `<div class="kv"><span class="k">GitHub</span><span>${p.github ? `<a href="${p.github}" target="_blank" rel="noopener">${p.github.replace("https://","")}</a>` : "not linked yet"}</span></div>` });
+    out.push({ html: `<div class="kv"><span class="k">Live</span><span>${p.live ? `<a href="${p.live}" target="_blank" rel="noopener">${p.live}</a>` : "not deployed yet"}</span></div>` });
+    return out;
+  },
+
+  contact(){
+    const out = [L("Contact", "section-head"), L("")];
+    out.push({ html: `<div class="kv"><span class="k">Email</span><a href="mailto:${DATA.email}">${DATA.email}</a></div>` });
+    out.push({ html: `<div class="kv"><span class="k">Phone</span><a href="tel:${DATA.phone.replace(/\s+/g,"")}">${DATA.phone}</a></div>` });
+    out.push({ html: `<div class="kv"><span class="k">GitHub</span><a href="${DATA.github}" target="_blank" rel="noopener">${DATA.github.replace("https://","")}</a></div>` });
+    out.push({ html: `<div class="kv"><span class="k">LinkedIn</span><span>${DATA.linkedin ? `<a href="${DATA.linkedin}" target="_blank" rel="noopener">${DATA.linkedin}</a>` : "not added yet"}</span></div>` });
+    out.push({ html: `<div class="kv"><span class="k">Location</span><span>${DATA.location}</span></div>` });
+    return out;
+  },
+
+  github(){
+    if (!DATA.github){
+      return [L("GitHub profile isn't linked yet.", "warn")];
+    }
+    openUrl(DATA.github);
+    return [L(`Opening ${DATA.github} ...`, "dim")];
+  },
+
+  resume(){
+    if (DATA.resume){
+      openUrl(DATA.resume);
+      return [L("Opening resume ...", "dim")];
+    }
+    return [L("Resume isn't linked yet — email me and I'll send it straight over.", "warn"), L(`  → ${DATA.email}`, "accent")];
+  },
+
+  neofetch(){
+    const now = new Date();
+    const days = Math.max(0, Math.floor((now - new Date("2025-01-01T00:00:00+05:30")) / 86400000));
+    const info = [
+      ["OS", "Human (Chennai Edition)"],
+      ["Host", DATA.location],
+      ["Kernel", "B.Com → Cloud Engineer"],
+      ["Uptime", `${days} days learning`],
+      ["Shell", "zsh"],
+      ["Languages", "Python, Django"],
+      ["Currently", "Building JARVIS"],
+    ];
+    const kv = info.map(([k,v]) => `<div class="kv"><span class="k">${k}</span><span>${v}</span></div>`).join("");
+    return [{ html: `<pre class="banner-line">${BANNER}</pre>` }, L(""), { html: kv }];
+  },
+
+  banner(){
+    return [{ html: `<pre class="banner-line">${BANNER}</pre>` }];
+  },
+
+  funfact(){
+    return [L("I once got out of the bath — mid-shower — because I'd", ""), L("figured out a bug fix in my head and had to write it down", ""), L("before I lost it. That's the level we're operating at. 🛁💻", "accent")];
+  },
+
+  date(){
+    return [L(new Date().toString(), "dim")];
+  },
+
+  history(){
+    if (!state.history.length) return [L("No commands run yet.", "dim")];
+    return state.history.map((c, i) => L(`  ${i + 1}  ${c}`, "dim"));
+  },
+
+  sudo(args){
+    if (args.join(" ").toLowerCase().includes("make coffee")){
+      return [L("☕ Brewing... done. Now go build something.", "success")];
+    }
+    return [L(`manoj is not in the sudoers file. This incident will be reported. (not really)`, "err")];
+  },
+
+  clear(){
+    document.getElementById("term-body").innerHTML = "";
+    return null;
+  },
+
+  exit(){
+    return [L("There's nothing to exit to — this is a website. Nice try though. 👋", "dim")];
+  },
+};
+COMMANDS["ls"] = COMMANDS.help;
+COMMANDS["man"] = COMMANDS.help;
+COMMANDS["pwd"] = () => [L("/home/manoj", "dim")];
+COMMANDS["echo"] = (args) => [L(args.join(" "))];
+COMMANDS["uname"] = (args) => {
+  if (args[0] === "-a") return [L("Linux manoj 5.18.0-custom x86_64 GNU/Linux", "dim")];
+  return [L("Linux", "dim")];
+};
+
+const body = document.getElementById("term-body");
+const hiddenInput = document.getElementById("hidden-input");
+
+function appendLines(lines){
+  if (!lines) return;
+  lines.forEach(item => {
+    const div = document.createElement("div");
+    if (item.html !== undefined){
+      div.innerHTML = item.html;
+    } else {
+      div.className = "line " + (item.cls || "");
+      div.textContent = item.text;
+    }
+    body.appendChild(div);
+  });
+  scrollToBottom();
+}
+
+function scrollToBottom(){
+  body.scrollTop = body.scrollHeight;
+}
+
+function renderPromptRow(command){
+  const row = document.createElement("div");
+  row.className = "prompt-row";
+  row.innerHTML = `<span class="prompt-tag">manoj@portfolio</span><span class="prompt-sep">:</span><span class="prompt-path">~</span><span class="prompt-sep">%</span><span class="typed">${esc(command)}</span>`;
+  body.appendChild(row);
+}
+
+function runCommand(raw){
+  const trimmed = raw.trim();
+  if (!trimmed){ renderNewInputLine(); return; }
+
+  renderPromptRow(trimmed);
+  state.history.push(trimmed);
+  state.historyIndex = state.history.length;
+
+  const [cmd, ...args] = trimmed.split(/\s+/);
+  const key = cmd.toLowerCase();
+
+  if (COMMANDS[key]){
+    const result = COMMANDS[key](args);
+    if (result) appendLines(result);
+  } else {
+    appendLines([L(`command not found: ${cmd}`, "err"), L("Type 'help' to see everything available.", "dim")]);
+  }
+
+  if (key !== "clear") appendLines([L("")]);
+  renderNewInputLine();
+}
+
+let activeInputLine = null;
+function renderNewInputLine(){
+  const row = document.createElement("div");
+  row.className = "input-line";
+  row.innerHTML = `<span class="prompt-tag">manoj@portfolio</span><span class="prompt-sep">:</span><span class="prompt-path">~</span><span class="prompt-sep">%</span><span class="typed" id="live-typed"></span><span class="cursor"></span>`;
+  body.appendChild(row);
+  activeInputLine = row;
+  scrollToBottom();
+}
+
+function updateLiveTyped(){
+  const el = document.getElementById("live-typed");
+  if (el) el.textContent = hiddenInput.value;
+}
+
+document.querySelector(".term-body").addEventListener("click", () => hiddenInput.focus());
+window.addEventListener("load", () => hiddenInput.focus());
+window.addEventListener("resize", () => scrollToBottom());
+window.addEventListener("orientationchange", () => setTimeout(scrollToBottom, 100));
+
+hiddenInput.addEventListener("input", updateLiveTyped);
+hiddenInput.addEventListener("keyup", updateLiveTyped);
+hiddenInput.addEventListener("keydown", updateLiveTyped);
+
+hiddenInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter"){
+    const val = hiddenInput.value;
+    hiddenInput.value = "";
+    if (activeInputLine) activeInputLine.remove();
+    runCommand(val);
+  } else if (e.key === "ArrowUp"){
+    e.preventDefault();
+    if (state.historyIndex > 0){
+      state.historyIndex--;
+      hiddenInput.value = state.history[state.historyIndex];
+      updateLiveTyped();
+    }
+  } else if (e.key === "ArrowDown"){
+    e.preventDefault();
+    if (state.historyIndex < state.history.length - 1){
+      state.historyIndex++;
+      hiddenInput.value = state.history[state.historyIndex];
+    } else {
+      state.historyIndex = state.history.length;
+      hiddenInput.value = "";
+    }
+    updateLiveTyped();
+  } else if (e.key === "Tab"){
+    e.preventDefault();
+    const partial = hiddenInput.value.toLowerCase();
+    if (!partial) return;
+    const matches = Object.keys(COMMANDS).filter(c => c.startsWith(partial));
+    if (matches.length === 1){
+      hiddenInput.value = matches[0] + " ";
+      updateLiveTyped();
+    } else if (matches.length > 1 && activeInputLine){
+      appendLines([L(matches.join("   "), "dim")]);
+      scrollToBottom();
+    }
+  }
+});
+
+function updateClock(){
+  const now = new Date();
+  const opts = { hour: "2-digit", minute: "2-digit", weekday: "short", day: "numeric", month: "short" };
+  document.getElementById("mb-clock").textContent = now.toLocaleString("en-IN", opts);
+}
+updateClock();
+setInterval(updateClock, 1000 * 30);
+
+const win = document.getElementById("term-window");
+
+document.getElementById("tl-close").addEventListener("click", () => {
+  win.classList.add("shake");
+  setTimeout(() => win.classList.remove("shake"), 400);
+  appendLines([L(""), L("You can't actually close this one — refresh the page if you really want to leave. 👋", "warn")]);
+  scrollToBottom();
+});
+
+document.getElementById("tl-min").addEventListener("click", () => {
+  win.classList.toggle("minimized");
+});
+
+document.getElementById("tl-zoom").addEventListener("click", () => {
+  win.classList.toggle("fullscreen");
+});
+
+appendLines([
+  { html: `<pre class="banner-line">${BANNER}</pre>` },
+  L(""),
+  L(`${DATA.title}`, "dim"),
+  L(`${DATA.location}`, "dim"),
+  L(""),
+  L("Type 'help' to see what this terminal can do.", "accent"),
+  L(""),
+]);
+renderNewInputLine();
+</script>
+</body>
+</html>
