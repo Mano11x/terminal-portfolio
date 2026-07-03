@@ -16,9 +16,44 @@ This portfolio is designed to feel more like a product experience than a traditi
 - Easy-to-update content through Python data files
 - Built to scale into a full personal platform
 
-## Project Gallery
+## 📸 Project Gallery
 
-![Terminal Portfolio Interface](assets/terminal-portfolio-showcase.svg)
+### Main Terminal View
+
+<p align="center">
+  <img src="assets/terminal-portfolio-preview.svg" alt="Terminal Portfolio Preview" width="100%">
+</p>
+
+---
+
+### macOS Terminal Header
+
+<p align="center">
+  <img src="assets/terminal-buttons.svg" alt="Terminal Buttons" width="220">
+</p>
+
+> **Note**
+>
+> The three colored circles in the top-left corner are **fully functional window controls**, inspired by the native **macOS Terminal**.
+>
+> - 🔴 **Red** — Close the terminal window
+> - 🟡 **Yellow** — Minimize the window
+> - 🟢 **Green** — Toggle fullscreen / maximize
+>
+> These controls were implemented to recreate an authentic terminal experience and enhance the realism of the portfolio.
+
+---
+
+## ✨ Features
+
+- 🖥️ Interactive terminal interface
+- 💻 Realistic macOS-inspired design
+- 🔴🟡🟢 Functional window controls
+- ⚡ Built with Django & JavaScript
+- 📱 Responsive across desktop and mobile
+- 🎨 Modern developer portfolio UI
+- ⌨️ Command-based navigation
+- 🚀 Easy to customize
 
 ## Key Features
 
