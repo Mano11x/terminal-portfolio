@@ -2,7 +2,6 @@
 
 A premium, interactive terminal-style portfolio built with Django. This project reimagines a personal portfolio as a realistic command-line experience, combining modern UI design, strong developer branding, and a memorable first impression.
 
-![Terminal Portfolio Preview](assets/terminal-portfolio-preview.svg)
 
 ## Overview
 
