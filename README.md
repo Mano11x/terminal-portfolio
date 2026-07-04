@@ -20,7 +20,7 @@ This portfolio is designed to feel more like a product experience than a traditi
 ### Main Terminal View
 
 <p align="center">
-  <img src="assets/terminal-portfolio-preview.svg" alt="Terminal Portfolio Preview" width="100%">
+  <alt="Terminal Portfolio Preview" width="100%">
 </p>
 
 ---
@@ -28,7 +28,7 @@ This portfolio is designed to feel more like a product experience than a traditi
 ### macOS Terminal Header
 
 <p align="center">
-  <img src="assets/terminal-buttons.svg" alt="Terminal Buttons" width="220">
+  <alt="Terminal Buttons" width="220">
 </p>
 
 > **Note**
